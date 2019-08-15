@@ -1,2 +1,2 @@
 # http-backend
-A simple HTTP server to server pages with a defined status
+A simple HTTP server to serve pages with a defined status
