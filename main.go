@@ -22,6 +22,7 @@ func main() {
 
 	// start the main http server
 	go func() {
+		fmt.Fprintf(os.Stdout, "start http server on port %v\n", *port)
 		err := notFound.ListenAndServe()
 		if err != http.ErrServerClosed {
 			fmt.Fprintf(os.Stderr, "failed to start server: %s\n", err)
