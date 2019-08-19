@@ -5,6 +5,7 @@
 *.so
 *.dylib
 http-backend
+debug
 
 # Test binary, build with `go test -c`
 *.test
