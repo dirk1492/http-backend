@@ -4,7 +4,9 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
 	"net/http"
+	"net/http/httputil"
 	"os"
 	"os/signal"
 	"strings"
@@ -13,11 +15,13 @@ import (
 )
 
 var headers []string
+var debug *bool
 
 func main() {
 	port := flag.Int("port", 8080, "Port number")
 	status := flag.Int("status", 200, "HTTP status")
 	timeout := flag.Duration("timeout", 5*time.Second, "Shutdown timeout in seconds")
+	debug = flag.Bool("debug", false, "Log all traffic")
 
 	headerParam := flag.String("copy-header", "", "Comma-seperated list of header keys")
 
@@ -81,6 +85,14 @@ func handle(status int) *server {
 
 		w.WriteHeader(status)
 		fmt.Fprint(w, http.StatusText(status))
+
+		if *debug {
+			resDump, err := httputil.DumpRequest(r, true)
+			if err != nil {
+				log.Println(err)
+			}
+			log.Println(string(resDump))
+		}
 	})
 	return s
 }
