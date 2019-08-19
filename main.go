@@ -7,16 +7,23 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 )
+
+var headers []string
 
 func main() {
 	port := flag.Int("port", 8080, "Port number")
 	status := flag.Int("status", 200, "HTTP status")
 	timeout := flag.Duration("timeout", 5*time.Second, "Shutdown timeout in seconds")
 
+	headerParam := flag.String("copy-header", "", "Comma-seperated list of header keys")
+
 	flag.Parse()
+
+	headers = getHeaderList(*headerParam)
 
 	notFound := newHTTPServer(fmt.Sprintf(":%d", *port), handle(*status))
 
@@ -31,6 +38,15 @@ func main() {
 	}()
 
 	waitShutdown(notFound, *timeout)
+}
+
+func getHeaderList(txt string) []string {
+	tmp := strings.Split(txt, ",")
+	rc := make([]string, len(tmp))
+	for i, k := range tmp {
+		rc[i] = strings.Trim(k, " \t\n\r")
+	}
+	return rc
 }
 
 type server struct {
@@ -55,6 +71,14 @@ func newHTTPServer(addr string, handler http.Handler) *http.Server {
 func handle(status int) *server {
 	s := &server{mux: http.NewServeMux()}
 	s.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+
+		for _, k := range headers {
+			v := r.Header.Get(k)
+			if v != "" {
+				w.Header().Add(k, v)
+			}
+		}
+
 		w.WriteHeader(status)
 		fmt.Fprint(w, http.StatusText(status))
 	})
