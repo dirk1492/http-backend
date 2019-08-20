@@ -12,4 +12,7 @@ RUN upx /service
 
 FROM scratch
 COPY --from=0 /service /service
-CMD ["/service"]
+COPY passwd /etc/passwd
+USER nobody
+ENV PATH=/
+ENTRYPOINT ["service"]
