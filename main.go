@@ -82,7 +82,7 @@ func handle(status int) *server {
 
 		if *copyHeader {
 			for k, v := range r.Header {
-				if strings.HasPrefix(k, "X-Auth-Subject") || k == "Authorization" {
+				if strings.HasPrefix(k, "X-Auth-") || k == "Authorization" {
 					for _, s := range v {
 						w.Header().Add(k, s)
 					}
