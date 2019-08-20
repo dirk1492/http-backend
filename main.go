@@ -50,6 +50,18 @@ func main() {
 
 	flag.Parse()
 
+	if *debug {
+		l.Println("Debug mode is enabled")
+	}
+
+	if *copyHeader {
+		l.Println("Copy header mode is enabled")
+	}
+
+	if *checkAuthSubject {
+		l.Println("Check auth subject mode is enabled")
+	}
+
 	notFound := newHTTPServer(fmt.Sprintf(":%d", *port), handle(*status))
 
 	// start the main http server
@@ -95,6 +107,8 @@ func handle(status int) *server {
 				fmt.Fprint(w, http.StatusText(http.StatusForbidden))
 
 				if *debug {
+					l.Println("X-Auth-Subject not found")
+
 					resDump, err := httputil.DumpRequest(r, true)
 					if err != nil {
 						l.Println(err)
