@@ -93,6 +93,15 @@ func handle(status int) *server {
 			if !ok {
 				w.WriteHeader(http.StatusForbidden)
 				fmt.Fprint(w, http.StatusText(http.StatusForbidden))
+
+				if *debug {
+					resDump, err := httputil.DumpRequest(r, true)
+					if err != nil {
+						l.Println(err)
+					}
+					l.Println(string(resDump))
+				}
+
 				return
 			}
 		}
