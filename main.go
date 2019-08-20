@@ -9,10 +9,17 @@ import (
 	"net/http/httputil"
 	"os"
 	"os/signal"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
 )
+
+// Version
+var Version string
+
+// Tag
+var Tag string
 
 var debug *bool
 var copyHeader *bool
@@ -25,13 +32,21 @@ func main() {
 
 	copyHeader = flag.Bool("copy-auth-header", false, "Copy authentication header entries")
 
+	if Version == "" {
+		Version = "development"
+	}
+
+	fmt.Printf("Go version: %s\n", runtime.Version())
+	fmt.Printf("Program version: %s\n", Tag)
+	fmt.Printf("Git version: %s\n\n", Version)
+
 	flag.Parse()
 
 	notFound := newHTTPServer(fmt.Sprintf(":%d", *port), handle(*status))
 
 	// start the main http server
 	go func() {
-		fmt.Fprintf(os.Stdout, "start http server on port %v\n", *port)
+		fmt.Fprintf(os.Stdout, "Start http server on port %v\n", *port)
 		err := notFound.ListenAndServe()
 		if err != http.ErrServerClosed {
 			fmt.Fprintf(os.Stderr, "failed to start server: %s\n", err)
@@ -94,11 +109,11 @@ func waitShutdown(s *http.Server, timeout time.Duration) {
 	signal.Notify(sigchan, os.Interrupt, syscall.SIGTERM)
 	<-sigchan
 
-	fmt.Fprintf(os.Stdout, "stopping server...\n")
+	fmt.Fprintf(os.Stdout, "Stopping server...\n")
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	if err := s.Shutdown(ctx); err != nil {
-		fmt.Fprintf(os.Stderr, "couldn't gracefully shutdown server: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Couldn't gracefully shutdown server: %s\n", err)
 	}
 }

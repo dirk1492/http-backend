@@ -7,7 +7,7 @@ WORKDIR /go/src/github.com/dirk1492/http-backend
 COPY * ./
 
 RUN dep ensure
-RUN go build -ldflags "-linkmode external -extldflags -static -s -w" -o /service
+RUN go build -ldflags "-linkmode external -extldflags -static -s -w -X main.Version=$(git rev-parse --short HEAD) -X main.Tag=$(git tag --points-at HEAD)" -o /service
 RUN upx /service
 
 FROM scratch
