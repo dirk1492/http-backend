@@ -15,10 +15,10 @@ import (
 	"time"
 )
 
-// Version
+// Version - the git version
 var Version string
 
-// Tag
+// Tag - the git tag
 var Tag string
 
 var debug *bool
