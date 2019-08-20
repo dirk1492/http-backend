@@ -14,8 +14,8 @@ import (
 	"time"
 )
 
-var headers []string
 var debug *bool
+var copyHeader *bool
 
 func main() {
 	port := flag.Int("port", 8080, "Port number")
@@ -23,11 +23,9 @@ func main() {
 	timeout := flag.Duration("timeout", 5*time.Second, "Shutdown timeout in seconds")
 	debug = flag.Bool("debug", false, "Log all traffic")
 
-	headerParam := flag.String("copy-header", "", "Comma-seperated list of header keys")
+	copyHeader = flag.Bool("copy-auth-header", false, "Copy authentication header entries")
 
 	flag.Parse()
-
-	headers = getHeaderList(*headerParam)
 
 	notFound := newHTTPServer(fmt.Sprintf(":%d", *port), handle(*status))
 
@@ -42,15 +40,6 @@ func main() {
 	}()
 
 	waitShutdown(notFound, *timeout)
-}
-
-func getHeaderList(txt string) []string {
-	tmp := strings.Split(txt, ",")
-	rc := make([]string, len(tmp))
-	for i, k := range tmp {
-		rc[i] = strings.Trim(k, " \t\n\r")
-	}
-	return rc
 }
 
 type server struct {
@@ -76,10 +65,13 @@ func handle(status int) *server {
 	s := &server{mux: http.NewServeMux()}
 	s.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 
-		for _, k := range headers {
-			v := r.Header.Get(k)
-			if v != "" {
-				w.Header().Add(k, v)
+		if *copyHeader {
+			for k, v := range r.Header {
+				if strings.HasPrefix(k, "X-Auth-Subject") || k == "Authorization" {
+					for _, s := range v {
+						w.Header().Add(k, s)
+					}
+				}
 			}
 		}
 
