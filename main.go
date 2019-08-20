@@ -23,6 +23,7 @@ var Tag string
 
 var debug *bool
 var copyHeader *bool
+var checkAuthSubject *bool
 
 var l = log.New(os.Stdout, "", log.Ldate|log.Ltime|log.Lmicroseconds)
 
@@ -33,6 +34,7 @@ func main() {
 	debug = flag.Bool("debug", false, "Log all traffic")
 
 	copyHeader = flag.Bool("copy-auth-header", false, "Copy authentication header entries")
+	checkAuthSubject = flag.Bool("check-auth-subject", true, "Send 403 if X-Auth-Subject is missing")
 
 	if Version == "" {
 		Version = "development"
@@ -85,6 +87,15 @@ func newHTTPServer(addr string, handler http.Handler) *http.Server {
 func handle(status int) *server {
 	s := &server{mux: http.NewServeMux()}
 	s.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+
+		if *checkAuthSubject {
+			_, ok := r.Header["X-Auth-Subject"]
+			if !ok {
+				w.WriteHeader(http.StatusForbidden)
+				fmt.Fprint(w, http.StatusText(http.StatusForbidden))
+				return
+			}
+		}
 
 		if *copyHeader {
 			for k, v := range r.Header {
