@@ -24,6 +24,8 @@ var Tag string
 var debug *bool
 var copyHeader *bool
 
+var l = log.New(os.Stdout, "", log.Ldate|log.Ltime|log.Lmicroseconds)
+
 func main() {
 	port := flag.Int("port", 8080, "Port number")
 	status := flag.Int("status", 200, "HTTP status")
@@ -36,9 +38,13 @@ func main() {
 		Version = "development"
 	}
 
-	fmt.Printf("Go version: %s\n", runtime.Version())
-	fmt.Printf("Program version: %s\n", Tag)
-	fmt.Printf("Git version: %s\n\n", Version)
+	if Tag == "" {
+		Tag = "development"
+	}
+
+	l.Printf("Go version: %s\n", runtime.Version())
+	l.Printf("Program version: %s\n", Tag)
+	l.Printf("Git version: %s\n", Version)
 
 	flag.Parse()
 
@@ -46,10 +52,10 @@ func main() {
 
 	// start the main http server
 	go func() {
-		fmt.Fprintf(os.Stdout, "Start http server on port %v\n", *port)
+		l.Printf("Start http server on port %v\n", *port)
 		err := notFound.ListenAndServe()
 		if err != http.ErrServerClosed {
-			fmt.Fprintf(os.Stderr, "failed to start server: %s\n", err)
+			l.Printf("Failed to start server: %s\n", err)
 			os.Exit(1)
 		}
 	}()
@@ -96,9 +102,9 @@ func handle(status int) *server {
 		if *debug {
 			resDump, err := httputil.DumpRequest(r, true)
 			if err != nil {
-				log.Println(err)
+				l.Println(err)
 			}
-			log.Println(string(resDump))
+			l.Println(string(resDump))
 		}
 	})
 	return s
@@ -109,11 +115,11 @@ func waitShutdown(s *http.Server, timeout time.Duration) {
 	signal.Notify(sigchan, os.Interrupt, syscall.SIGTERM)
 	<-sigchan
 
-	fmt.Fprintf(os.Stdout, "Stopping server...\n")
+	l.Printf("Stopping server...\n")
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	if err := s.Shutdown(ctx); err != nil {
-		fmt.Fprintf(os.Stderr, "Couldn't gracefully shutdown server: %s\n", err)
+		l.Printf("Couldn't gracefully shutdown server: %s\n", err)
 	}
 }
