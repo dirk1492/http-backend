@@ -40,7 +40,7 @@ var checkReqMethod *bool
 var l = log.New(os.Stdout, "", log.Ldate|log.Ltime|log.Lmicroseconds)
 
 func main() {
-	port := flag.Int("port", 8080, "Port number")
+	listen := flag.String("listen", ":8080", "Interface to listen on")
 	status := flag.Int("status", 200, "HTTP status")
 	timeout := flag.Duration("timeout", 5*time.Second, "Shutdown timeout in seconds")
 	debug = flag.Bool("debug", false, "Log all traffic")
@@ -76,14 +76,14 @@ func main() {
 	}
 
 	if *checkReqMethod {
-		l.Println("Check request method")
+		l.Println("Check request method is enabled")
 	}
 
-	notFound := newHTTPServer(fmt.Sprintf(":%d", *port), handle(*status))
+	notFound := newHTTPServer(*listen, handle(*status))
 
 	// start the main http server
 	go func() {
-		l.Printf("Start http server on port %v\n", *port)
+		l.Printf("Start http server on port %v\n", *listen)
 		err := notFound.ListenAndServe()
 		if err != http.ErrServerClosed {
 			l.Printf("Failed to start server: %s\n", err)
