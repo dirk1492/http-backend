@@ -83,7 +83,7 @@ func main() {
 
 	// start the main http server
 	go func() {
-		l.Printf("Start http server on port %v\n", *listen)
+		l.Printf("Listen on %v\n", *listen)
 		err := notFound.ListenAndServe()
 		if err != http.ErrServerClosed {
 			l.Printf("Failed to start server: %s\n", err)
