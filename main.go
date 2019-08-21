@@ -21,9 +21,21 @@ var Version string
 // Tag - the git tag
 var Tag string
 
+var methods = map[string]bool{
+	"DELETE":  true,
+	"GET":     true,
+	"HEAD":    true,
+	"OPTIONS": true,
+	"PATCH":   true,
+	"POST":    true,
+	"PUT":     true,
+	"TRACE":   true,
+}
+
 var debug *bool
 var copyHeader *bool
 var checkAuthSubject *bool
+var checkReqMethod *bool
 
 var l = log.New(os.Stdout, "", log.Ldate|log.Ltime|log.Lmicroseconds)
 
@@ -33,8 +45,9 @@ func main() {
 	timeout := flag.Duration("timeout", 5*time.Second, "Shutdown timeout in seconds")
 	debug = flag.Bool("debug", false, "Log all traffic")
 
-	copyHeader = flag.Bool("copy-auth-header", false, "Copy authentication header entries")
-	checkAuthSubject = flag.Bool("check-auth-subject", true, "Send 403 if X-Auth-Subject is missing")
+	copyHeader = flag.Bool("copy-auth-header", false, "Copy authentication header (Authorization and X-Auth-*) entries")
+	checkAuthSubject = flag.Bool("check-auth-subject", false, "Send 403 if X-Auth-Subject is missing")
+	checkReqMethod = flag.Bool("check-request-method", false, "Send 403 if method is not DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT or TRACE")
 
 	if Version == "" {
 		Version = "development"
@@ -60,6 +73,10 @@ func main() {
 
 	if *checkAuthSubject {
 		l.Println("Check auth subject mode is enabled")
+	}
+
+	if *checkReqMethod {
+		l.Println("Check request method")
 	}
 
 	notFound := newHTTPServer(fmt.Sprintf(":%d", *port), handle(*status))
@@ -100,22 +117,28 @@ func handle(status int) *server {
 	s := &server{mux: http.NewServeMux()}
 	s.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 
+		if *debug {
+			resDump, err := httputil.DumpRequest(r, true)
+			if err != nil {
+				l.Println(err)
+			}
+			l.Println(string(resDump))
+		}
+
 		if *checkAuthSubject {
 			_, ok := r.Header["X-Auth-Subject"]
 			if !ok {
 				w.WriteHeader(http.StatusForbidden)
 				fmt.Fprint(w, http.StatusText(http.StatusForbidden))
+				return
+			}
+		}
 
-				if *debug {
-					l.Println("X-Auth-Subject not found")
-
-					resDump, err := httputil.DumpRequest(r, true)
-					if err != nil {
-						l.Println(err)
-					}
-					l.Println(string(resDump))
-				}
-
+		if *checkReqMethod {
+			_, ok := methods[r.Method]
+			if !ok {
+				w.WriteHeader(http.StatusForbidden)
+				fmt.Fprint(w, http.StatusText(http.StatusForbidden))
 				return
 			}
 		}
@@ -132,14 +155,6 @@ func handle(status int) *server {
 
 		w.WriteHeader(status)
 		fmt.Fprint(w, http.StatusText(status))
-
-		if *debug {
-			resDump, err := httputil.DumpRequest(r, true)
-			if err != nil {
-				l.Println(err)
-			}
-			l.Println(string(resDump))
-		}
 	})
 	return s
 }
