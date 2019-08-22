@@ -33,6 +33,7 @@ var methods = map[string]bool{
 }
 
 var debug *bool
+var accessLog *bool
 var copyHeader *bool
 var checkAuthSubject *bool
 var checkReqMethod *bool
@@ -44,6 +45,7 @@ func main() {
 	status := flag.Int("status", 200, "HTTP status")
 	timeout := flag.Duration("timeout", 5*time.Second, "Shutdown timeout in seconds")
 	debug = flag.Bool("debug", false, "Log all traffic")
+	accessLog = flag.Bool("access-log", false, "Log all requests and response status")
 
 	copyHeader = flag.Bool("copy-auth-header", false, "Copy authentication header (Authorization and X-Auth-*) entries")
 	checkAuthSubject = flag.Bool("check-auth-subject", false, "Send 403 if X-Auth-Subject is missing")
@@ -65,6 +67,10 @@ func main() {
 
 	if *debug {
 		l.Println("Debug mode is enabled")
+	}
+
+	if *accessLog {
+		l.Println("Access log is enabled")
 	}
 
 	if *copyHeader {
@@ -117,19 +123,10 @@ func handle(status int) *server {
 	s := &server{mux: http.NewServeMux()}
 	s.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 
-		if *debug {
-			resDump, err := httputil.DumpRequest(r, true)
-			if err != nil {
-				l.Println(err)
-			}
-			l.Println(string(resDump))
-		}
-
 		if *checkAuthSubject {
 			_, ok := r.Header["X-Auth-Subject"]
 			if !ok {
-				w.WriteHeader(http.StatusForbidden)
-				fmt.Fprint(w, http.StatusText(http.StatusForbidden))
+				writeStatus(w, r, http.StatusForbidden)
 				return
 			}
 		}
@@ -137,8 +134,7 @@ func handle(status int) *server {
 		if *checkReqMethod {
 			_, ok := methods[r.Method]
 			if !ok {
-				w.WriteHeader(http.StatusForbidden)
-				fmt.Fprint(w, http.StatusText(http.StatusForbidden))
+				writeStatus(w, r, http.StatusForbidden)
 				return
 			}
 		}
@@ -153,10 +149,25 @@ func handle(status int) *server {
 			}
 		}
 
-		w.WriteHeader(status)
-		fmt.Fprint(w, http.StatusText(status))
+		writeStatus(w, r, status)
 	})
 	return s
+}
+
+func writeStatus(w http.ResponseWriter, r *http.Request, status int) {
+	w.WriteHeader(status)
+	fmt.Fprint(w, http.StatusText(status))
+
+	if *debug {
+		resDump, err := httputil.DumpRequest(r, true)
+		if err != nil {
+			l.Println(err)
+		}
+		l.Println(string(resDump))
+		l.Printf("HTTP/1.1 %d %s", status, http.StatusText(status))
+	} else if *accessLog {
+		l.Printf("%3d %s %s", status, r.Method, r.URL.String())
+	}
 }
 
 func waitShutdown(s *http.Server, timeout time.Duration) {
